@@ -29,31 +29,24 @@ headers = {
 }
 #search_term = input('Write your search here: ')
 search_term = '长沙'
-response = requests.get('https://cs.lianjia.com/ershoufang/rs' + search_term + '/', cookies=cookies, headers=headers)
-
-soup = BeautifulSoup(response.text, 'html.parser')
-lis = soup.select('ul.sellListContent > li')
 houses = []
-for li in lis:
-    house = {}
-    infos = li.select('div.info.clear > div')
-    for field in infos:
-        print(field)
-        house[field['class'][0]] = field.text.strip()
-    houses.append(house)
-print(houses)
+for page in range(1, 100 + 1):
+    response = requests.get(f'https://cs.lianjia.com/ershoufang/pg{page}rs{search_term}/', cookies=cookies, headers=headers)
 
-with open('test.csv', 'w') as testfile:
+    soup = BeautifulSoup(response.text, 'html.parser')
+    lis = soup.select('ul.sellListContent > li')
+    for li in lis:
+        house = {}
+        infos = li.select('div.info.clear > div')
+        for field in infos:
+            print(field)
+            house[field['class'][0]] = field.text.strip()
+        houses.append(house)
+    print(houses)
 
-    # store the desired header row as a list
-    # and store it in a variable
-    fieldnames = ['first_field', 'second_field', 'third_field']
-
-    # pass the created csv file and the header
-    # rows to the Dictwriter function
-    writer = csv.DictWriter(testfile, fieldnames=fieldnames)
-
-    # Now call the writeheader function,
-    # this will write the specified rows as
-    # headers of the csv file
+with open('output.csv', 'w') as f:
+    keys = ['title', 'flood', 'address', 'followInfo', 'tag', 'priceInfo']
+    writer = csv.DictWriter(f, fieldnames=keys)
     writer.writeheader()
+    for house in houses:
+        writer.writerow(house)
