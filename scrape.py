@@ -1,4 +1,6 @@
 import requests
+from bs4 import BeautifulSoup
+import csv
 
 cookies = {
     'select_city': '430100',
@@ -25,7 +27,33 @@ headers = {
     'Pragma': 'no-cache',
     'Cache-Control': 'no-cache',
 }
-search_term = '%E9%9B%A8%E8%8A%B1%E5%8C%BA'
+#search_term = input('Write your search here: ')
+search_term = '长沙'
 response = requests.get('https://cs.lianjia.com/ershoufang/rs' + search_term + '/', cookies=cookies, headers=headers)
 
-print(response.text)
+soup = BeautifulSoup(response.text, 'html.parser')
+lis = soup.select('ul.sellListContent > li')
+houses = []
+for li in lis:
+    house = {}
+    infos = li.select('div.info.clear > div')
+    for field in infos:
+        print(field)
+        house[field['class'][0]] = field.text.strip()
+    houses.append(house)
+print(houses)
+
+with open('test.csv', 'w') as testfile:
+
+    # store the desired header row as a list
+    # and store it in a variable
+    fieldnames = ['first_field', 'second_field', 'third_field']
+
+    # pass the created csv file and the header
+    # rows to the Dictwriter function
+    writer = csv.DictWriter(testfile, fieldnames=fieldnames)
+
+    # Now call the writeheader function,
+    # this will write the specified rows as
+    # headers of the csv file
+    writer.writeheader()
