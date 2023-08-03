@@ -5,12 +5,17 @@ import csv
 cookies = {}
 headers = {}
 
-search_terms = ['长沙', '北京', '上海', '杭州', '武汉', '福州', '广州', '深圳']
+response = requests.get('https://www.lianjia.com/city/')
+soup = BeautifulSoup(response.text, 'html.parser')
+links = soup.select('.city_list a')
+cities = {link.text: link['href'] for link in links}
+print(cities)
+
 units = []
-for search_term in search_terms:
+for city_name, city_url in cities.items():
     for page in range(1, 1 + 1):
-        print(f'On page {page}, now have found {len(units)} units.')
-        response = requests.get(f'https://cs.lianjia.com/ershoufang/pg{page}rs{search_term}/', cookies=cookies, headers=headers)
+        print(f'On {city_name} page {page}, now have found {len(units)} units.')
+        response = requests.get(f'{city_url}ershoufang/pg{page}rs{city_name}/', cookies=cookies, headers=headers)
 
         soup = BeautifulSoup(response.text, 'html.parser')
         lis = soup.select('ul.sellListContent > li')
