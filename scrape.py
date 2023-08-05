@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 
+UNITS_PER_PAGE = 30
+
 cookies = {}
 headers = {}
 
@@ -13,16 +15,16 @@ print(cities)
 
 units = []
 for city_name, city_url in cities.items():
+    print(f'Scraping city {city_name}.')
     page = 0
     while True:
         page += 1
-        print(f'On {city_name} page {page}, now have found {len(units)} units.')
         response = requests.get(f'{city_url}ershoufang/pg{page}rs{city_name}/', cookies=cookies, headers=headers)
 
         soup = BeautifulSoup(response.text, 'html.parser')
         lis = soup.select('ul.sellListContent > li')
-        if len(lis) == 0:
-            print('No more units found on this page.')
+        print(f'On {city_name} page {page}, found {len(lis)} units (total {len(units)}).')
+        if len(lis) != UNITS_PER_PAGE:
             break
         for li in lis:
             unit = {
