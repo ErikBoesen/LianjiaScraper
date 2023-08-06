@@ -2,22 +2,45 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import csv
+from threading import Thread
 
 UNITS_PER_PAGE = 30
+OUT_FILE = 'output.csv'
 
 
 class Scraper:
-    thread_pool = None
-
     def __init__(self):
-        pass
+        response = requests.get('https://www.lianjia.com/city/')
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = soup.select('.city_list a')
+        self.units = []
+        self.cities_queue = {link.text: link['href'] for link in links}
+
+        if os.path.exists(OUT_FILE):
+            with open(OUT_FILE, 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    self.units.append(row)
+
+            cities_processed = {unit['city'] for unit in self.units}
+            for city_name in cities_processed:
+                self.cities_queue.pop(city_name)
+            print('Already processed cities: ' + ', '.join(cities_processed))
+
+    def scrape_thread(self):
+        while self.cities_queue:
+            city_name, city_url = self.cities_queue.popitem()
+            print(f'Scraping city {city_name}.')
+            city_units = self.scrape_city(city_name, city_url)
+            self.units += city_units
+            self.store_units(self.units)
 
     def scrape_city(self, city_name, city_url):
         city_units = []
         page = 0
         while True:
             page += 1
-            response = requests.get(f'{city_url}ershoufang/pg{page}rs{city_name}/', cookies=cookies, headers=headers)
+            response = requests.get(f'{city_url}ershoufang/pg{page}rs{city_name}/')
 
             soup = BeautifulSoup(response.text, 'html.parser')
             lis = soup.select('ul.sellListContent > li')
@@ -39,37 +62,17 @@ class Scraper:
             keys = ['city', 'title', 'flood', 'address', 'followInfo', 'tag', 'priceInfo']
             writer = csv.DictWriter(f, fieldnames=keys)
             writer.writeheader()
-            writer = csv.DictWriter(f, fieldnames=keys)
             for unit in units:
                 writer.writerow(unit)
 
     def run(self):
-        cookies = {}
-        headers = {}
-
-        response = requests.get('https://www.lianjia.com/city/')
-        soup = BeautifulSoup(response.text, 'html.parser')
-        links = soup.select('.city_list a')
-        cities = {link.text: link['href'] for link in links}
-        print(cities)
-
-        units = []
-        if os.path.exists('output.csv'):
-            with open('output.csv', 'r') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    units.append(row)
-
-            cities_processed = {unit['city'] for unit in units}
-            for city_name in cities_processed:
-                cities.pop(city_name)
-            print('Already processed cities: ' + ', '.join(cities_processed))
-
-        for city_name, city_url in cities.items():
-            print(f'Scraping city {city_name}.')
-            city_units = scrape_city(city_name, city_url)
-            units += city_units
-            store_units(units)
+        thread_pool = []
+        for i in range(0, 5):
+            thread = Thread(target=self.scrape_thread)
+            thread.start()
+            thread_pool.append(thread)
+        for thread in thread_pool:
+            thread.join()
 
 s = Scraper()
 s.run()
